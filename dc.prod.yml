@@ -1,0 +1,33 @@
+version: "3"
+services:
+  frontend:
+    image: "softgalaxy/simplewebpi4b"
+    container_name: "simplewebpi4b"
+    ports:
+      - 8080:8080
+    volumes:
+      - frontend_static_volume:/home/app/web/build/     
+#     environment:
+#	- REPO_USER:softgalaxy
+#	- REPO_PASS:!Docker786@ 
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=America/Edmonton
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_REMOVE_VOLUMES=true
+      - WATCHTOWER_DEBUG=false
+      - WATCHTOWER_POLL_INTERVAL=86400
+      - WATCHTOWER_HTTP_API=false
+      - WATCHTOWER_HTTP_API_TOKEN=string
+      - WATCHTOWER_SCHEDULE=* * * * * *
+      - REPO_USER=softgalaxy
+      - REPO_PASS=!Docker786@
+    restart: always
+
+volumes:
+  frontend_static_volume:
+#  /var/run/docker.sock:

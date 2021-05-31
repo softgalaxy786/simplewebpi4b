@@ -1,0 +1,96 @@
+version: "3"
+
+services:
+  db:
+    image: postgres:latest #12.0-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./.env.prod.db
+    restart: always
+  redis:
+    image: redis
+    restart: always
+    expose:
+      - 6379
+  web_wsgi:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.prod
+    image: "djreact:latest"
+    container_name: "docker-gunicorn"
+    command: gunicorn djreact.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - django_static_volume:/home/app/web/static
+      - /var/local/netConfig:/home/app/web/netConfig
+    expose:
+      - 8000
+    env_file:
+      - ./.env.prod
+    restart: always
+    # devices:
+    # - "/dev/i2c-1:/dev/i2c-1"
+    links:
+      - redis
+    depends_on:
+      - db
+  web_asgi:
+    image: "djreact:latest"
+    container_name: "docker-daphne"
+    command: daphne --bind 0.0.0.0 -p 8001 djreact.asgi:application
+    expose:
+      - 8001
+    env_file:
+      - ./.env.prod
+    links:
+      - redis
+    depends_on:
+      - db
+      - redis
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    stdin_open: true
+    volumes:
+      - react_static_volume:/home/app/web/build/
+    depends_on:
+      - web_wsgi
+      - web_asgi
+  nginx:
+    build: ./nginx
+    volumes:
+      - django_static_volume:/home/app/web/static/
+      - react_static_volume:/home/app/web/static/build/
+    ports:
+      - 80:80
+    restart: always
+    depends_on:
+      - web_wsgi
+      - web_asgi
+      - frontend
+
+  # miner:
+  #   build: ./miner
+  #   ports:
+  #     - 8001:8001
+  #   restart: always
+  #   depends_on:
+  #     - nginx
+
+  # portainer:
+  #   image: portainer/portainer-ce:latest
+  #   restart: always
+  #   ports:
+  #     - 9000:9000
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - portainer_data:/data
+  #   depends_on:
+  #     - nginx
+
+volumes:
+  postgres_data:
+  django_static_volume:
+  react_static_volume:
+  # portainer_data:
